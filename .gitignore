@@ -1,3 +1,6 @@
+.gitignore
+.gitattributes
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -13,3 +16,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Custom files and directories
+.idea/
+assets/
+bin/
+logs/
+production/
