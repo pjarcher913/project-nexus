@@ -40,7 +40,6 @@ const (
 
 // Used for sending responses to clients when server receives POST to home URL
 type POST_Home_Response struct {
-	// Define properties of struct
 	Message 	string	`json:"msg"`
 	Parameter 	string	`json:"param"`
 	Timestamp 	string	`json:"time"`
