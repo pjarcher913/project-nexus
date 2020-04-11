@@ -20,11 +20,16 @@ import (
 	"time"
 )
 
-// Only enable if debugging and want extra log info recorded
-const DEBUG_MODE = true  // Limits functionality for dev. purposes
+/*====================================================================================================================*/
+
+// Limits functionality for dev. purposes
+const DEBUG_MODE = true // Only enable if debugging and want extra log info recorded
 
 // Where log files are to be generated and stored
 const LOG_PATH = "./logs/"
+
+// Unique id tag included into newly-generated log file names
+var LOG_STAMP = "pn-main"
 
 // Host port to serve on
 const SERVER_PORT = ":3000"
@@ -33,9 +38,15 @@ const (
 	PATH_TO_HOME_HTML = "./src/web/pages/home/home.html" // Location of home.html (used to render page)
 )
 
-// Unique id tag included into newly-generated log file names
-var LOG_STAMP = "main_" + time.RFC3339
+// Used for sending responses to clients when server receives POST to home URL
+type POST_Home_Response struct {
+	// Define properties of struct
+	Message 	string	`json:"msg"`
+	Parameter 	string	`json:"param"`
+	Timestamp 	string	`json:"time"`
+}
 
+/*====================================================================================================================*/
 
 func main() {
 	// Perform all preliminary setups before server goes live and starts listening for requests.
@@ -44,12 +55,14 @@ func main() {
 	if prelimSetup() {
 		// Initialize route handler
 		routeHandler := initRouter()
-		// Begin serving the site and listening on assigned web_old port
+		// Begin serving the site and listening on assigned web port
 		initWebServer(routeHandler)
 	} else {
 		log.Fatalln("prelimSetup() failed.")
 	}
 }
+
+/*====================================================================================================================*/
 
 // initLogger() initializes Logrus and configures it for future utilization.
 func initLogger() {
@@ -77,20 +90,25 @@ func prelimSetup() bool {
 	return true
 }
 
-// initRouter() initializes Mux's routing services and configures them according to the website's defined route hierarchy.
+/*====================================================================================================================*/
+
+// initRouter() initializes Mux's routing services and configures them according to the website's page route hierarchy.
 func initRouter() *mux.Router {
 	log.Infoln("Executing initRouter().")
 
 	// Init mux router object
 	r := mux.NewRouter()
 
-	// Init route handlers
-	/* 404 */
-	r.NotFoundHandler = http.HandlerFunc(prh_404)
-	/* GETs */
+	/* Init route handlers */
+
+	// 404
+	// TODO: Custom 404 error route handler
+	//r.NotFoundHandler = http.HandlerFunc(prh_404)
+
+	// GETs
 	r.HandleFunc("/", prh_GET_Home).Methods("GET")
 
-	/* POSTs */
+	// POSTs
 	r.HandleFunc("/{rootParam}", prh_POST_Home).Methods("POST")
 
 	return r
@@ -108,5 +126,45 @@ func initWebServer(routeHandler *mux.Router) {
 	err := http.ListenAndServe(SERVER_PORT, routeHandler)
 	if err != nil {
 		log.Fatalln(err.Error())
+	}
+}
+
+// prh_GET_Home() is the website's "Home" page GET route handler.
+func prh_GET_Home(w http.ResponseWriter, r *http.Request) {
+	log.Infoln("Executing prh_GET_Home().")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, PATH_TO_HOME_HTML)
+}
+
+// prh_POST_Home() is the website's "Home" page POST route handler.
+// It simply returns basic info that was parsed from the web request.
+func prh_POST_Home(w http.ResponseWriter, r *http.Request) {
+	log.Infoln("Executing prh_POST_Home(), which is an Easter Egg!")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Get raw request URL path
+	reqUrl := r.URL
+
+	// Get request params
+	params := mux.Vars(r)
+
+	// Populate response struct
+	response := POST_Home_Response{
+		Message:   "Hey, you found an API Easter Egg!",
+		Parameter: params["rootParam"],
+		Timestamp: time.Now().UTC().String(),
+	}
+
+	// Log response
+	log.WithFields(log.Fields{
+		"responseData": response,
+		"allParams": params,
+		"fullURL": reqUrl,
+	}).Debug("RESPONSE-prh_POST_Home()")
+
+	// Encode response as JSON and send to client via http.ResponseWriter
+	encodingErr := json.NewEncoder(w).Encode(response)
+	if encodingErr != nil {
+		log.Fatalln(encodingErr.Error())
 	}
 }
